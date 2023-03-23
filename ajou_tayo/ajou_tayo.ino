@@ -182,29 +182,29 @@ void setup() {
 
   // MQTT Publish & Subscribe phase
   //----------------------------------------
-  if (mqtt_state == MQTT_STATE_CONNECTED) {
-    char mqtt_message_b[] = "Hello IoT Open House B";
-    char mqtt_message_c[] = "Hello IoT Open House C";
+//   if (mqtt_state == MQTT_STATE_CONNECTED) {
+//     char mqtt_message_b[] = "Hello IoT Open House B";
+//     char mqtt_message_c[] = "Hello IoT Open House C";
 
-    // MQTT Subscribe
-    if (setMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_A, 1, MQTT_QOS0) == RET_OK) {
-      dumpMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_A, 1, MQTT_QOS0);
-    }
-#if 0
-    if (setMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_D, 2, MQTT_QOS2) == RET_OK) {
-      dumpMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_D, 2, MQTT_QOS0);
-    }
-#endif
-    // MQTT Publish test
-    if (sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_B, MQTT_QOS1, MQTT_RETAIN, mqtt_message_b, strlen(mqtt_message_b)) == RET_OK) {
-      dumpMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_B, mqtt_message_b);
+//     // MQTT Subscribe
+//     if (setMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_A, 1, MQTT_QOS0) == RET_OK) {
+//       dumpMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_A, 1, MQTT_QOS0);
+//     }
+// #if 0
+//     if (setMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_D, 2, MQTT_QOS2) == RET_OK) {
+//       dumpMqttSubscribeTopic_BG96(MQTT_SAMPLE_TOPIC_D, 2, MQTT_QOS0);
+//     }
+// #endif
+//     // MQTT Publish test
+//     if (sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_B, MQTT_QOS1, MQTT_RETAIN, mqtt_message_b, strlen(mqtt_message_b)) == RET_OK) {
+//       dumpMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_B, mqtt_message_b);
 
-    }
+//     }
 
-    if (sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_C, MQTT_QOS1, MQTT_RETAIN, mqtt_message_c, strlen(mqtt_message_c)) == RET_OK) {
-      dumpMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_C, mqtt_message_c);
-    }
-  }
+//     if (sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_C, MQTT_QOS1, MQTT_RETAIN, mqtt_message_c, strlen(mqtt_message_c)) == RET_OK) {
+//       dumpMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_C, mqtt_message_c);
+//     }
+//   }
 
   char buf_mqtt_topic[100] = {0, };
   char buf_mqtt_msg[200] = {0, };
