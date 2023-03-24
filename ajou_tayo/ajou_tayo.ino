@@ -6,6 +6,8 @@
 #define RET_NOK                            -1
 #define DEBUG_ENABLE                       1
 #define DEBUG_DISABLE                      0
+#define ON                                 1
+#define OFF                                0
 
 #define BG96_APN_PROTOCOL_IPv4             1
 #define BG96_APN_PROTOCOL_IPv6             2
@@ -52,9 +54,6 @@
 #define MQTT_RETAIN                       0
 
 #define MQTT_SAMPLE_TOPIC_A               "gps"
-#define MQTT_SAMPLE_TOPIC_B               "topic/openhouse-B"
-#define MQTT_SAMPLE_TOPIC_C               "topic/openhouse-C"
-#define MQTT_SAMPLE_TOPIC_D               "topic/openhouse-D"
 
 unsigned long getLocationTime = 0;
 
@@ -99,15 +98,15 @@ void setup() {
 
   delay(50);
 
-  analog(11, 0);
-  analog(9, 0);
+  analogWrite(11, 0);
+  analogWrite(9, 0);
   delay(110);
 
-  analog(11, 255);
+  analogWrite(11, 255);
 
   delay(4800);
 
-  analog(9, 255);
+  analogWrite(9, 255);
   //turn on LM5
 
   // put your setup code here, to run once:
@@ -116,7 +115,7 @@ void setup() {
 
   MYPRINTF("Waiting for Cat.M1 Module Ready...\r\n");
 
-  waitCatM1Ready();
+  //waitCatM1Ready();
 
   MYPRINTF("System Init Complete\r\n");
 
@@ -209,9 +208,6 @@ void setup() {
   char buf_mqtt_topic[100] = {0, };
   char buf_mqtt_msg[200] = {0, };
   int mqtt_msgid = 0;
-
-  m_parser.send("AT+QGPS=2");
-
 }
 
 
@@ -221,7 +217,7 @@ void loop() {
 
     while (1) {
       if (getGpsLocation_BG96(&gps_info) == RET_OK) {
-        buf[];
+        char buf[100];
         sprintf(buf, "1, ", gps_info.utc, ", ", gps_info.lat, ", ", gps_info.lon);
         sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, buf, strlen(buf));
 
@@ -265,7 +261,7 @@ void serialPcInit(void)
 
 void serialDeviceInit()
 {
-  Serial3.begin(WM_N400MSE_DEFAULT_BAUD_RATE);
+  Serial1.begin(WM_N400MSE_DEFAULT_BAUD_RATE);
 }
 
 void serialAtParserInit()
