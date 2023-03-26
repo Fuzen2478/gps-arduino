@@ -54,13 +54,16 @@
 #define MQTT_RETAIN                       0
 
 #define MQTT_SAMPLE_TOPIC_A               "gps"
+#define MQTT_SAMPLE_TOPIC_B               "topic/openhouse-B"
+#define MQTT_SAMPLE_TOPIC_C               "topic/openhouse-C"
+#define MQTT_SAMPLE_TOPIC_D               "topic/openhouse-D"
 
 unsigned long getLocationTime = 0;
 
-char timeBuf[35];
-char utcBuf[15];
-char latBuf[10];
-char lonBuf[10];
+char timeBuf[100];
+char utcBuf[100];
+char latBuf[100];
+char lonBuf[100];
 
 typedef struct gps_data_t {
   float utc;      // hhmmss.sss
@@ -152,6 +155,9 @@ void setup() {
         if (openMqttBroker_BG96(mqtt_broker_url, mqtt_broker_port) == RET_OK) {
           MYPRINTF("[MQTT] Socket open success\r\n");
           mqtt_state = MQTT_STATE_CONNECT;
+        } else if(openMqttBroker_BG96(mqtt_broker_url, mqtt_broker_port) == 2){
+          MYPRINTF("[MQTT] already done\r\n");
+          mqtt_state = MQTT_STATE_CONNECT;
         } else {
           MYPRINTF("[MQTT] Socket open failed\r\n");
         }
@@ -208,18 +214,18 @@ void setup() {
   char buf_mqtt_topic[100] = {0, };
   char buf_mqtt_msg[200] = {0, };
   int mqtt_msgid = 0;
+
+  setGpsOnOff_BG96(ON);
+  MYPRINTF("GPS On\r\n");
 }
 
 
 void loop() {
-  if (setGpsOnOff_BG96(ON) == RET_OK) {
-    MYPRINTF("GPS On\r\n");
-
     while (1) {
       if (getGpsLocation_BG96(&gps_info) == RET_OK) {
         char buf[100];
         sprintf(buf, "1, ", gps_info.utc, ", ", gps_info.lat, ", ", gps_info.lon);
-        sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, buf, strlen(buf));
+        // sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, buf, strlen(buf));
 
 
         MYPRINTF("Get GPS information >>>");
@@ -240,18 +246,8 @@ void loop() {
       } else {
         MYPRINTF("Failed to get GPS information\r\n");
       }
-      delay(1000);
+      delay(5000);
     }
-#if 0
-    if (setGpsOnOff_BG96(OFF) == RET_OK) {
-      MYPRINTF("GPS Off\r\n")
-    }
-#endif
-
-  } else {
-    MYPRINTF("GPS On failed\r\n")
-  }
-
 }
 
 void serialPcInit(void)
@@ -478,7 +474,6 @@ int8_t getImeiNumber_BG96(char * imei)
 
 int8_t setGpsOnOff_BG96(bool onoff)
 {
-  int8_t ret = RET_NOK;
   char _buf[15];
   char _buf1[30];
   char _buf2[30];
@@ -488,12 +483,11 @@ int8_t setGpsOnOff_BG96(bool onoff)
   if (m_parser.send(_buf) && m_parser.recv("OK")) {
     sprintf((char *)_buf1, "GPS Power: %s\r\n", onoff ? "On" : "Off");
     LOGDEBUG(_buf1);
-    ret = RET_OK;
   } else {
-    sprintf((char *)_buf2, "Set GPS Power %s failed\r\n", onoff ? "On" : "Off");
+    sprintf((char *)_buf2, "Set GPS Power already done\r\n");
     LOGDEBUG(_buf2);
   }
-  return ret;
+  return RET_OK;
 }
 
 
@@ -506,9 +500,9 @@ int8_t getGpsLocation_BG96(gps_data *data)
   //Timer t;
 
   // Structure init: GPS info
-  data->utc = data->lat = data->lon = data->hdop = data->altitude = data->cog = data->spkm = data->spkn = data->nsat = 0.0;
-  data->fix = 0;
-  memset(&data->date, 0x00, 7);
+  // data->utc = data->lat = data->lon = data->hdop = data->altitude = data->cog = data->spkm = data->spkn = data->nsat = 0.0;
+  // data->fix = 0;
+  // memset(&data->date, 0x00, 7);
 
   // timer start
   //t.start();
@@ -517,13 +511,16 @@ int8_t getGpsLocation_BG96(gps_data *data)
   while ( !ok && ( (millis() - getLocationTime) < BG96_CONNECT_TIMEOUT ) ) {
     m_parser.flush();
     m_parser.send((char*)"AT+QGPSLOC=2"); // MS-based mode
-    ok = m_parser.recv("+QGPSLOC: ");
+    ok = m_parser.recv("+QGPSLOC:");
     if (ok) {
       m_parser.recv("%s\r\n", _buf);
-      sscanf(_buf, "%f,%f,%f,%f,%f,%d,%f,%f,%f,%6s,%d",
-             data->utc, data->lat, data->lon, data->hdop,
+      sscanf(_buf, "%f,%[^,],%[^,],%[^,],%[^,],%d,%[^,],%[^,],%[^,],%6s,%d",
+             &data->utc, data->lat, data->lon, data->hdop,
              data->altitude, data->fix, data->cog,
              data->spkm, data->spkn, data->date, data->nsat);
+      Serial.println(_buf);
+      Serial.println(strcat("1, ", _buf));
+      sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, strcat("1, ", _buf), strlen(strcat("1, ", _buf)));
       ok = m_parser.recv("OK");
     }
   }
@@ -619,6 +616,8 @@ int8_t openMqttBroker_BG96(char * url, int port)
         LOGDEBUG("AT+QMTOPEN result[1]: Wrong parameter");
       } else if (result == 2) {
         LOGDEBUG("AT+QMTOPEN result[2]: MQTT identifier is occupied");
+        m_parser.flush();
+        return 2;
       } else if (result == 3) {
         LOGDEBUG("AT+QMTOPEN result[3]: Failed to activate PDP");
       } else if (result == 4) {
