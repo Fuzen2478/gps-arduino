@@ -44,7 +44,6 @@
 #define MQTT_EOF                           0x1A
 
 // Connection info:
-// HiveMQ Websocket client(http://www.hivemq.com/demos/websocket-client/)
 #define MQTT_CLIENTID                     "clientExample"
 #define MQTT_USERID                       NULL
 #define MQTT_PASSWORD                     NULL
@@ -54,9 +53,7 @@
 #define MQTT_RETAIN                       0
 
 #define MQTT_SAMPLE_TOPIC_A               "gps"
-#define MQTT_SAMPLE_TOPIC_B               "topic/openhouse-B"
-#define MQTT_SAMPLE_TOPIC_C               "topic/openhouse-C"
-#define MQTT_SAMPLE_TOPIC_D               "topic/openhouse-D"
+#define MQTT_SAMPLE_TOPIC_B               "is_connect"
 
 unsigned long getLocationTime = 0;
 
@@ -99,19 +96,7 @@ ATCmdParser m_parser = ATCmdParser(&Serial1);
 void setup() {
   char buf[100];
 
-  delay(50);
-
-  analogWrite(11, 0);
-  analogWrite(9, 0);
-  delay(110);
-
-  analogWrite(11, 255);
-
-  delay(4800);
-
-  analogWrite(9, 255);
-  //turn on LM5
-
+  LM5_on();
   // put your setup code here, to run once:
   serialPcInit();
   catm1DeviceInit();
@@ -126,7 +111,7 @@ void setup() {
   MYPRINTF(">> Target Board: LM5 (Quectel BG96)");
   MYPRINTF("=================================================\r\n");
 
-  for (int i = 0; i < 5; i++)
+  for (int i = 0; i < 20; i++)
   {
     Serial.println("");
     if (initStatus() == true) {
@@ -135,7 +120,7 @@ void setup() {
     else {
       LOGDEBUG("Please Check your H/W Status\r\n");
     }
-    delay(1000);
+    delay(5000);
   }
 
   checknSetApn_BG96(CATM1_APN_SKT);
@@ -211,41 +196,22 @@ void setup() {
 //     }
 //   }
 
-  char buf_mqtt_topic[100] = {0, };
-  char buf_mqtt_msg[200] = {0, };
-  int mqtt_msgid = 0;
-
   setGpsOnOff_BG96(ON);
   MYPRINTF("GPS On\r\n");
 }
 
 
 void loop() {
+  int cnt = 0;
+  char cnt_str[5];
     while (1) {
       if (getGpsLocation_BG96(&gps_info) == RET_OK) {
-        char buf[100];
-        sprintf(buf, "1, ", gps_info.utc, ", ", gps_info.lat, ", ", gps_info.lon);
-        // sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, buf, strlen(buf));
-
-
-        MYPRINTF("Get GPS information >>>");
-        sprintf((char *)utcBuf, "gps_info - utc: %6.3f", gps_info.utc);
-        MYPRINTF(utcBuf);             // utc: hhmmss.sss
-        sprintf((char *)latBuf, "gps_info - lat: %2.5f", gps_info.lat);
-        MYPRINTF(latBuf);             // latitude: (-)dd.ddddd
-        sprintf((char *)lonBuf, "gps_info - lon: %2.5f", gps_info.lon);
-        MYPRINTF(lonBuf);             // longitude: (-)dd.ddddd
-        //MYPRINTF("gps_info - hdop: %2.1f", gps_info.hdop)           // Horizontal precision: 0.5-99.9
-        //MYPRINTF("gps_info - altitude: %2.1f", gps_info.altitude)   // altitude of antenna from sea level (meters)
-        //MYPRINTF("gps_info - fix: %d", gps_info.fix)                // GNSS position mode: 2=2D, 3=3D
-        //MYPRINTF("gps_info - cog: %3.2f", gps_info.cog)             // Course Over Ground: ddd.mm
-        //MYPRINTF("gps_info - spkm: %4.1f", gps_info.spkm)           // Speed over ground (Km/h): xxxx.x
-        //MYPRINTF("gps_info - spkn: %4.1f", gps_info.spkn)           // Speed over ground (knots): xxxx.x
-        //MYPRINTF("gps_info - date: %s", gps_info.date)              // data: ddmmyy
-        //MYPRINTF("gps_info - nsat: %d\r\n", gps_info.nsat)          // number of satellites: 0-12
+        sprintf(cnt_str, "%d", cnt);
+        sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_B, MQTT_QOS1, MQTT_RETAIN, cnt_str, strlen(cnt_str));
       } else {
         MYPRINTF("Failed to get GPS information\r\n");
       }
+      cnt++;
       delay(5000);
     }
 }
@@ -269,6 +235,21 @@ void catm1DeviceInit()
 {
   serialDeviceInit();
   serialAtParserInit();
+}
+
+void LM5_on(){
+  delay(50);
+
+  analogWrite(11, 0);
+  analogWrite(9, 0);
+  delay(110);
+
+  analogWrite(11, 255);
+
+  delay(4800);
+
+  analogWrite(9, 255);
+  //turn on LM5
 }
 
 // ----------------------------------------------------------------
@@ -342,8 +323,6 @@ int8_t setEchoStatus_BG96(bool onoff)
     }
   }
 }
-
-
 
 int8_t getUsimStatus_BG96(void)
 {
@@ -495,6 +474,7 @@ int8_t getGpsLocation_BG96(gps_data *data)
 {
   int8_t ret = RET_NOK;
   char _buf[100];
+  char *send = "1, ";
 
   bool ok = false;
   //Timer t;
@@ -512,15 +492,12 @@ int8_t getGpsLocation_BG96(gps_data *data)
     m_parser.flush();
     m_parser.send((char*)"AT+QGPSLOC=2"); // MS-based mode
     ok = m_parser.recv("+QGPSLOC:");
+    Serial.println(ok);
     if (ok) {
       m_parser.recv("%s\r\n", _buf);
-      sscanf(_buf, "%f,%[^,],%[^,],%[^,],%[^,],%d,%[^,],%[^,],%[^,],%6s,%d",
-             &data->utc, data->lat, data->lon, data->hdop,
-             data->altitude, data->fix, data->cog,
-             data->spkm, data->spkn, data->date, data->nsat);
-      Serial.println(_buf);
-      Serial.println(strcat("1, ", _buf));
-      sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, strcat("1, ", _buf), strlen(strcat("1, ", _buf)));
+      Serial.println(strcat("buf : ", _buf));
+      strcat(send, _buf);
+      sendMqttPublishMessage_BG96(MQTT_SAMPLE_TOPIC_A, MQTT_QOS1, MQTT_RETAIN, send, strlen(send));
       ok = m_parser.recv("OK");
     }
   }
@@ -531,36 +508,7 @@ int8_t getGpsLocation_BG96(gps_data *data)
 }
 
 // ----------------------------------------------------------------
-// Functions: Cat.M1 DNS
-// ----------------------------------------------------------------
-
-int8_t getIpAddressByName_BG96(const char * name, char * ipstr)
-{
-  char buf2[50];
-  bool ok;
-  int  err, ipcount, dnsttl;
-
-  int8_t ret = RET_NOK;
-
-  ok = ( m_parser.send("AT+QIDNSGIP=1,\"%s\"", name)
-         && m_parser.recv("OK")
-         && m_parser.recv("+QIURC: \"dnsgip\",%d,%d,%d", &err, &ipcount, &dnsttl)
-         && err == 0
-         && ipcount > 0
-       );
-
-  if ( ok ) {
-    m_parser.recv("+QIURC: \"dnsgip\",\"%[^\"]\"", ipstr);       //use the first DNS value
-    for ( int i = 0; i < ipcount - 1; i++ )
-      m_parser.recv("+QIURC: \"dnsgip\",\"%[^\"]\"", buf2);   //and discrard the rest  if >1
-
-    ret = RET_OK;
-  }
-  return ret;
-}
-
-// ----------------------------------------------------------------
-// Functions: Cat.M1 PDP context activate / deactivate
+// Functions: Cat.M1 PDP context activate
 // ----------------------------------------------------------------
 
 void setContextActivate_BG96(void)
@@ -571,26 +519,6 @@ void setContextActivate_BG96(void)
   }
 }
 
-int8_t setContextDeactivate_BG96(void) // Deactivate a PDP Context
-{
-  if ( (m_parser.send(F("AT+QIDEACT=1"))
-        && m_parser.recv(F(RESP_OK))) ) {
-    LOGDEBUG("PDP Context Deactivation: Success\r\n");
-  }
-}
-
-int8_t getIpAddress_BG96(char * ipstr) // IPv4 or IPv6
-{
-  int8_t ret = RET_NOK;
-  int id, state, type; // not used
-
-  m_parser.send("AT+QIACT?");
-  if (m_parser.recv("+QIACT: %d,%d,%d,\"%[^\"]\"", &id, &state, &type, ipstr)
-      && m_parser.recv("OK")) {
-    ret = RET_OK;
-  }
-  return ret;
-}
 // ----------------------------------------------------------------
 // Functions: Cat.M1 MQTT Publish & Subscribe
 // ----------------------------------------------------------------
