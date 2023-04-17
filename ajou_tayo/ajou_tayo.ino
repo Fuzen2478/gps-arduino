@@ -38,16 +38,13 @@ void loop() {
   Serial3.println("AT+QGPSLOC=2\r");
   while(Serial3.available()){
     bg96_rsp = Serial3.readString();
-    int start = bg96_rsp.indexOf("+QGPSLOC");
+    // int start = bg96_rsp.indexOf("+QGPSLOC");
     bg96_rsp.toCharArray(gps, bg96_rsp.length());
     // Serial.println(gps);
-    if(start > -1){
-      Pub(gps);
-      break;
-    }
-    Serial3.flush();
+    Pub(gps);
   }
   bg96_rsp = "";
+  Serial3.flush();
   delay(5000);
 }
 
