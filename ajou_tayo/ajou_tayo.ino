@@ -18,9 +18,7 @@ UnixTime stamp(9);
 char IPAddr[32];
 int _PORT = 2478;
 char sckInfo[128];
-char sendBuffer[] = "";
-char recvBuffer[32];
-int recvSize;
+char sendBuffer[32] = "";
 
 void setup() {
   // put your setup code here, to run once:
@@ -78,20 +76,12 @@ INFO:
       goto INFO;
     }
   }
-
-  /* 3 :TCP Socket Send Data */
-
-  if (TYPE1SC.socketSend(sendBuffer) == 0) {
-    DebugSerial.print("[Send] >>  ");
-    DebugSerial.println(sendBuffer);
-  } else
-    DebugSerial.println("Send Fail!!!");
-
 }
 
 void loop() {
   delay(5000);
-  strcpy(sendBuffer, getgps(gps).c_str());
+  String gpsStr = getgps(gps);
+  gpsStr.toCharArray(sendBuffer, gpsStr.length());
   if (TYPE1SC.socketSend(sendBuffer) == 0) {
     DebugSerial.print("[Send] >>  ");
     DebugSerial.println(sendBuffer);
