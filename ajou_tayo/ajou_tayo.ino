@@ -9,7 +9,7 @@
 
 #define DebugSerial Serial
 #define M1Serial Serial1
-#define GpsSerial Serial2
+#define mySerial Serial2
 
 TYPE1SC TYPE1SC(M1Serial, DebugSerial);
 TinyGPS gps;
@@ -18,13 +18,14 @@ UnixTime stamp(9);
 char IPAddr[32];
 int _PORT = 2478;
 char sckInfo[128];
-char sendBuffer[32] = "";
+char sendBuffer[1024] = "";
+char* debugBuffer = "";
 
 void setup() {
   // put your setup code here, to run once:
   M1Serial.begin(115200);
   DebugSerial.begin(115200);
-  GpsSerial.begin(9600);
+  mySerial.begin(9600);
 
   DebugSerial.println("TYPE1SC Module Start!!!");
   /* Board Reset */
@@ -76,12 +77,17 @@ INFO:
       goto INFO;
     }
   }
+
+  // if (TYPE1SC.setGPS(1, debugBuffer) == 0)
+  //   DebugSerial.println("GPS Set Complete");
+  // else DebugSerial.println(debugBuffer);
 }
 
 void loop() {
   delay(5000);
   String gpsStr = getgps(gps);
   gpsStr.toCharArray(sendBuffer, gpsStr.length());
+  
   if (TYPE1SC.socketSend(sendBuffer) == 0) {
     DebugSerial.print("[Send] >>  ");
     DebugSerial.println(sendBuffer);
@@ -90,10 +96,18 @@ void loop() {
 }
 
 String getgps(TinyGPS &gps){
-  float lat, lng;
+  float lat, lon;
   int _year, _month, _day, _hour, _minute, _second, _tmp;
 
-  gps.f_get_position(&lat, &lng);
+  lat = 0.0;
+  lon = 0.0;
+
+  if (mySerial.available()) {
+    int c = mySerial.read();
+    if (gps.encode(c)){
+      gps.f_get_position(&lat, &lon);
+    }
+  }
 
   char szTime[32];
   if (TYPE1SC.getCCLK(szTime, sizeof(szTime)) == 0) {
@@ -105,5 +119,5 @@ String getgps(TinyGPS &gps){
 
   //Get Unix Time 
   uint32_t unix = stamp.getUnix();
-  return "04," + String(unix) + "," + String(lat) + "," + String(lng);
+  return "04," + String(unix) + "," + String(lat) + "," + String(lon);
 }
